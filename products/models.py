@@ -54,7 +54,7 @@ class ProductSize(models.Model):
         db_table = 'products_sizes'
         constraints = [models.UniqueConstraint(
             fields = ['product', 'size'],
-            name = 'unique size for one product'
+            name = 'product_sizes_product_size_unq'
             )
         ]
 
