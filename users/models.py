@@ -27,5 +27,11 @@ class Wishlist(models.Model):
     
     class Meta:
         db_table = 'wishlists'
+        constraints = [models.UniqueConstraint(
+            fields = ['user', 'product'],
+            name = "unique wish for one user"
+            
+            )
+        ] 
         
         

@@ -52,11 +52,16 @@ class ProductSize(models.Model):
 
     class Meta: 
         db_table = 'products_sizes'
+        constraints = [models.UniqueConstraint(
+            fields = ['product', 'size'],
+            name = 'unique size for one product'
+            )
+        ]
 
 class Review(TimeStamp): 
     content = models.TextField()
     user    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
-    product = models.ForeignKey(Product, on_delete=Category, related_name='reviews')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
 
     class Meta:
         db_table = 'reviews'
