@@ -24,7 +24,7 @@ class Character(models.Model):
 
 class Product(TimeStamp): 
     name      = models.CharField(max_length=200)
-    price     = models.DecimalField()
+    price     = models.DecimalField(max_digits=30, decimal_places=2)
     detail    = models.TextField()
     category  = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     character = models.ForeignKey(Character, on_delete=models.CASCADE, related_name='products')
