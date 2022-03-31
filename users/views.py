@@ -1,12 +1,12 @@
-import json, bcrypt, jwt
+import json, bcrypt, jwt, datetime
 
 from django.http import JsonResponse
 from django.views import View
 from django.db import IntegrityError
-from django.forms import ValidationError
+from django.core.exceptions import ValidationError
 from django.conf import settings
 
-from utilities.validators import email_validate, password_validate, phone_number_validate
+from utilities.validators import validate_email, validate_password, validate_phone_number
 from .models import User
 
 class SignUpView(View):
@@ -17,9 +17,9 @@ class SignUpView(View):
             password      = data['password']
             phone_number  = data['phone_number']
 
-            email_validate(email)
-            password_validate(password)
-            phone_number_validate(phone_number)
+            validate_email(email)
+            validate_password(password)
+            validate_phone_number(phone_number)
 
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -47,15 +47,15 @@ class SignInView(View):
             email    = data['email']
             password = data['password']
 
-            email_validate(email)
-            password_validate(password)
+            validate_email(email)
+            validate_password(password)
             
             user = User.objects.get(email = email)
 
             if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-                return JsonResponse({'message' : 'INVALID_USER'}, status = 400)
+                return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
             
-            access_token = jwt.encode({'id' : user.id}, settings.SECRET_KEY, settings.ALGORITHM)
+            access_token = jwt.encode({'id' : user.id, 'iat' : datetime.datetime.utcnow(), 'exp':datetime.datetime.utcnow() + datetime.timedelta(days=2)}, settings.SECRET_KEY, settings.ALGORITHM)
             return JsonResponse({'message' : 'SUCCESS', 'token': access_token}, status = 200)
             
         except KeyError:
@@ -63,4 +63,6 @@ class SignInView(View):
         except ValidationError as e:
             return JsonResponse({'message': e.message}, status = 400)
         except User.DoesNotExist:
-            return JsonResponse({'message' : 'INVALID_USER'}, status = 400)
+            return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({"message": "EXPIRED_TOKEN"}, status = 401)
