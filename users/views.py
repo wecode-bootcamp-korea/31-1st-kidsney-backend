@@ -57,7 +57,7 @@ class SignInView(View):
             
             access_token = jwt.encode({'id' : user.id, 'iat' : datetime.datetime.utcnow(), 'exp':datetime.datetime.utcnow() + datetime.timedelta(days=2)}, settings.SECRET_KEY, settings.ALGORITHM)
             return JsonResponse({'message' : 'SUCCESS', 'token': access_token}, status = 200)
-            
+      
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except ValidationError as e:
