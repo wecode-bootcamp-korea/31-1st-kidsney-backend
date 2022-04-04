@@ -64,3 +64,4 @@ class SignInView(View):
             return JsonResponse({'message': e.message}, status = 400)
         except User.DoesNotExist:
             return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
+        
