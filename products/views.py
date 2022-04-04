@@ -12,8 +12,8 @@ class MainProductView(View):
         sorting       = request.GET.get('order-by', 'latest')
         categories    = request.GET.getlist('sub', None)
         characters    = request.GET.getlist('character', None)
-        offset        = request.GET.get('offset', 0)
-        limit         = request.GET.get('limit', 8)
+        offset        = int(request.GET.get('offset', 0))
+        limit         = int(request.GET.get('limit', 8))
 
         sorting_dict = {
             'low-price' : 'price',
@@ -28,12 +28,10 @@ class MainProductView(View):
             q &= Q(category__title__in=categories)
         if characters:
             q &= Q(character__name__in=characters)
-
-        products     = Product.objects.filter(q).order_by(sorting_dict[sorting])
-        total_count  = len(products)
-
-        offset = int(offset)
-        limit  = int(limit)
+            
+        filtered_products = Product.objects.filter(q)
+        products          = filtered_products.order_by(sorting_dict[sorting])[offset:offset+limit]
+        total_count       = filtered_products.count()
 
         product_list = [{
             'id'           : product.id,
@@ -44,7 +42,7 @@ class MainProductView(View):
             'character'    : product.character.name,
             'stock'        : [{
                 product_size.size.size_tag : product_size.stock
-            } for product_size in ProductSize.objects.filter(product = product)]
-        } for product in products[offset:limit]] 
+            } for product_size in product.sizes.all()]
+        } for product in products] 
 
         return JsonResponse({'result' : product_list, 'count' : total_count}, status=200)
