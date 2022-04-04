@@ -5,6 +5,7 @@ from django.views import View
 from django.db.models import Q
 
 from products.models import *
+from utilities.decorators import check_token
 
 class MainProductView(View):
     def get(self, request):
@@ -46,3 +47,53 @@ class MainProductView(View):
         } for product in products] 
 
         return JsonResponse({'result' : product_list, 'count' : total_count}, status=200)
+    
+class ProductDetailView(View):
+    def get(self, request, product_id):
+        product = Product.objects.get(id = product_id)
+
+        result = {
+            'id'           : product.id,
+            'name'         : product.name,
+            'price'        : product.price,
+            'images'       : [image.image_url for image in product.images.all()],
+            'detail'       : product.detail,
+            'character'    : product.character.name,
+            'stock': [{
+                product_size.size.size_tag: product_size.stock
+            } for product_size in ProductSize.objects.filter(product = product)],
+            'reviews' : [{
+                'review_id' : review.id,
+                'user'      : review.user.last_name + review.user.first_name + f'({review.user.email})',
+                'content'   : review.content,
+                'created_at': review.created_at
+            }for review in product.reviews.all()]
+        }
+    
+        return JsonResponse({'result' : result}, status=200)
+    
+    @check_token
+    def post(self, request, product_id):
+        data    = json.loads(request.body)
+        product = Product.objects.get(id = product_id)
+        user    = request.user
+
+        Review.objects.create(
+            user    = user,
+            product = product,
+            content = data['content']
+        )
+
+        return JsonResponse({'message' : 'CREATED'}, status=200)
+    
+    @check_token
+    def delete(self, request, product_id):
+        review_id = request.GET.get('review-id', None)
+        user   = request.user
+        review = Review.objects.filter(id = review_id, product_id =product_id ,user = user)
+
+        if not review.exists():
+            return JsonResponse({'message' : 'INVALID_USER'}, status = 400)
+        
+        review.delete()
+        return JsonResponse({'message' : 'SUCCESS'}, status = 200)
