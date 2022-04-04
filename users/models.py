@@ -30,7 +30,6 @@ class Wishlist(models.Model):
         constraints = [models.UniqueConstraint(
             fields = ['user', 'product'],
             name = 'wishlists_user_product_unq'
-            
             )
         ] 
         
