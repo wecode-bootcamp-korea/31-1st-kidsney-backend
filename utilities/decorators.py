@@ -8,7 +8,7 @@ from users.models import User
 def check_token(func):
     def wrapper(self, request, *args, **kwargs):
         try:
-            token = request.headers.get('Authorizations', None)
+            token = request.headers.get('Authorization', None)
             payload = jwt.decode(token, settings.SECRET_KEY, settings.ALGORITHM)
             request.user = User.objects.get(id = payload['id'])
             
