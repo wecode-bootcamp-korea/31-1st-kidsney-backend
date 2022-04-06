@@ -93,7 +93,7 @@ class ProductDetailView(View):
                 content = data['content']
             )
 
-            return JsonResponse({'message' : 'CREATED'}, status=200)
+            return JsonResponse({'message' : 'CREATED'}, status=201)
         
         except Product.DoesNotExist:
             return JsonResponse({'message' : 'PRODUCT_NOT_EXIST'}, status=404)        
@@ -105,7 +105,7 @@ class ProductDetailView(View):
         reviews   = Review.objects.filter(id = review_id, product_id =product_id ,user = user)
 
         if not reviews.exists():
-            return JsonResponse({'message' : 'REVIEW_NOT_EXIST'}, status = 401)
+            return JsonResponse({'message' : 'REVIEW_NOT_EXIST'}, status = 404)
         
         reviews.delete()
         return JsonResponse({'message' : 'SUCCESS'}, status = 204)
