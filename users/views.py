@@ -6,8 +6,11 @@ from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
+
 from utilities.validators import validate_email, validate_password, validate_phone_number
-from .models import User
+from utilities.decorators import check_token
+from .models import User, Wishlist
+from products.models import Product, ProductSize
 
 class SignUpView(View):
     def post(self, request):
@@ -64,4 +67,37 @@ class SignInView(View):
             return JsonResponse({'message': e.message}, status = 400)
         except User.DoesNotExist:
             return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
+
+class WishListView(View):
+    @check_token
+    def get(self, request):
+        user = request.user
+
+        wish_list = [{
+            'id'           : product.id,
+            'name'         : product.name,
+            'price'        : product.price,
+            'images'       : [image.image_url for image in product.images.all()],
+            'detail'       : product.detail,
+            'character'    : product.character.name,
+            'stock'        : [{
+                product_size.size.size_tag : product_size.stock
+            } for product_size in ProductSize.objects.filter(product = product)]
+        } for product in [wish_product.product for wish_product in Wishlist.objects.filter(user = user)]]
+
+        return JsonResponse({'wish_list' : wish_list}, status=200)
+
+    @check_token
+    def post(self, request):
+        product_id   = request.GET.get('product-id')
+        user         = request.user
+        product      = Product.objects.get(id = product_id)
+        wish_product = Wishlist.objects.filter(user = user, product = product)
+
+        if not wish_product.exists():
+            Wishlist.objects.create(user = user, product = product)
+            return JsonResponse({'message' : 'ADDED'}, status = 201)
+        
+        wish_product.delete()
+        return JsonResponse({'message' : 'DELETED'}, status = 201)
         

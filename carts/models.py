@@ -2,9 +2,9 @@ from django.db import models
 from utilities.timestamp import TimeStamp
 
 class Cart(TimeStamp):
-    user     = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    product  = models.ForeignKey('products.Product', on_delete=models.CASCADE)
-    quantity = models.IntegerField()
+    user     = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='carts')
+    product  = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='carts')
+    quantity = models.IntegerField(default=0)
     
     def total_price(self):
         return self.quantity * self.product.price
