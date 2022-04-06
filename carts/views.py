@@ -12,8 +12,9 @@ class PostCartView(View):
     def post(self, request, product_id):
         try:
             data         = json.loads(request.body)
-            size         = Size.objects.get(size_tag = data['size'])
             quantity     = data['quantity']
+            
+            size         = Size.objects.get(size_tag = data['size'])
             product      = Product.objects.get(id = product_id)
             product_size = ProductSize.objects.get(product = product, size = size)
 
@@ -25,7 +26,6 @@ class PostCartView(View):
                 )
 
                 return HttpResponse(status=201)
-
 
             cart = Cart.objects.get(user = request.user, product_size = product_size)
             cart.quantity += quantity
@@ -55,7 +55,7 @@ class GetCartView(View):
                 'stock'   : cart.product_size.stock,
                 'price'   : cart.product_size.product.price  
             },
-            'total_price' : cart.quantity*cart.product_size.product.price
+            'total_price' : cart.quantity * cart.product_size.product.price
         } for cart in carts]
         
         return JsonResponse({'carts' : carts}, status=200)
@@ -78,6 +78,7 @@ class UpdateCartView(View):
             data     = json.loads(request.body)
             user     = request.user
             quantity = data['quantity']
+            
             size     = Size.objects.get(size_tag = data['size'])
             cart     = Cart.objects.get(id = cart_id, user = user)
             
