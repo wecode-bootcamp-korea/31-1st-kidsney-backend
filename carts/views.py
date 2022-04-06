@@ -1,51 +1,51 @@
 import json
 
 from django.views import View
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 
 from products.models import Product, ProductSize, Size
 from .models import Cart
 from utilities.decorators import check_token
  
-class CartView(View):
+class PostCartView(View):
     @check_token
-    def post(self, request):
+    def post(self, request, product_id):
         try:
             data         = json.loads(request.body)
-            product_id   = request.GET.get('product-id')
             size         = Size.objects.get(size_tag = data['size'])
             quantity     = data['quantity']
-            user         = request.user
             product      = Product.objects.get(id = product_id)
             product_size = ProductSize.objects.get(product = product, size = size)
-            stock        = product_size.stock
 
-            cart, is_created = Cart.objects.get_or_create(
-                user         = user,
-                product_size = product_size
-            )
+            if not Cart.objects.filter(user = request.user, product_size = product_size).exists():
+                Cart.objects.create(
+                user         = request.user,
+                product_size = product_size,
+                quantity     = quantity
+                )
+
+                return HttpResponse(status=201)
+
+
+            cart = Cart.objects.get(user = request.user, product_size = product_size)
+            cart.quantity += quantity
+            cart.save()
             
-            if cart.quantity + quantity <= stock:
-                cart.quantity += quantity
-                cart.save()
-                return JsonResponse({'message' : 'SUCCESS'}, status = 201)
-
-            if cart.quantity == 0:
-                cart.delete()
-            return JsonResponse({'message' : 'NOT_ENOUGH_STOCK'}, status = 400)
+            return HttpResponse(status=200)
 
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except ProductSize.DoesNotExist:
-            return JsonResponse({'message' : 'SIZE_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message' : 'PRODUCT_NOT_EXIST'}, status = 404)
 
+class GetCartView(View):
     @check_token
     def get(self, request):
         user  = request.user
         carts = Cart.objects.filter(user = user)
 
         carts = [{
-            'cart_id': cart.id,
+            'id': cart.id,
             'product': {
                 'id'      : cart.product_size.product_id,
                 'name'    : cart.product_size.product.name,
@@ -59,45 +59,36 @@ class CartView(View):
         } for cart in carts]
         
         return JsonResponse({'carts' : carts}, status=200)
-   
+
+class UpdateCartView(View):
     @check_token
-    def delete(self, request):
+    def delete(self, request, cart_id):
         try:
-            user    = request.user
-            cart_id = request.GET.get('cart-id')
-            if not cart_id:
-                return JsonResponse({'message' : 'CART_NOT_EXIST'}, status=404)
+            Cart.objects.get(user = request.user, id = cart_id).delete()
+            return HttpResponse(status = 204)
 
-            Cart.objects.get(user = user, id = cart_id).delete()
-            return JsonResponse({'message' : 'SUCCESS'}, status=200)
-
+        except KeyError:
+            return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except Cart.DoesNotExist:
             return JsonResponse({'message' : 'CART_NOT_EXIST'}, status=404)
     
     @check_token
-    def patch(self, request):
+    def patch(self, request, cart_id):
         try:
             data     = json.loads(request.body)
             user     = request.user
-            cart_id  = request.GET.get('cart-id')
             quantity = data['quantity']
+            size     = Size.objects.get(size_tag = data['size'])
+            cart     = Cart.objects.get(id = cart_id, user = user)
             
-            if not cart_id:
-                return JsonResponse({'message' : 'WRONG_URL'}, status = 404)
             if quantity < 1:
                 return JsonResponse({'message' : 'SUB_ZERO_ERROR'}, status = 400)
 
-            cart = Cart.objects.get(id = cart_id, user = user)
-            if not quantity <= cart.product_size.stock:
-                return JsonResponse({'message' : 'NOT_ENOUGH_STOCK'}, status = 400)
-
-            cart.quantity = quantity
+            cart.product_size = ProductSize.objects.get(product = cart.product_size.product, size = size)
+            cart.quantity     = quantity
             cart.save()
 
-            return JsonResponse({
-                'message' : 'SUCCESS',
-                'quantity' : cart.quantity
-            }, status = 200)
+            return HttpResponse(status = 200)
         
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)

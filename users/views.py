@@ -6,11 +6,10 @@ from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
-
 from utilities.validators import validate_email, validate_password, validate_phone_number
 from utilities.decorators import check_token
 from .models import User, Wishlist
-from products.models import Product, ProductSize
+from products.models import Product
 
 class SignUpView(View):
     def post(self, request):
@@ -71,33 +70,33 @@ class SignInView(View):
 class WishListView(View):
     @check_token
     def get(self, request):
-        user = request.user
+        user     = request.user
+        wishlist = Wishlist.objects.filter(user = user)
 
-        wish_list = [{
-            'id'           : product.id,
-            'name'         : product.name,
-            'price'        : product.price,
-            'images'       : [image.image_url for image in product.images.all()],
-            'detail'       : product.detail,
-            'character'    : product.character.name,
-            'stock'        : [{
-                product_size.size.size_tag : product_size.stock
-            } for product_size in ProductSize.objects.filter(product = product)]
-        } for product in [wish_product.product for wish_product in Wishlist.objects.filter(user = user)]]
+        wishlist = [{
+            'id': wish_product.id,
+            'product': {
+                'id'      : wish_product.product.id,
+                'name'    : wish_product.product.name,
+                'images'  : [image.image_url for image in wish_product.product.images.all()],
+                'price'   : wish_product.product.price
+            }
+        } for wish_product in wishlist]
 
-        return JsonResponse({'wish_list' : wish_list}, status=200)
-
+        return JsonResponse({'wish_list' : wishlist}, status=200)
+        
+class PostWishView(View):
     @check_token
-    def post(self, request):
-        product_id   = request.GET.get('product-id')
-        user         = request.user
-        product      = Product.objects.get(id = product_id)
-        wish_product = Wishlist.objects.filter(user = user, product = product)
+    def post(self, request, product_id):
+        try:
+            product      = Product.objects.get(id = product_id)
+            wish_product = Wishlist.objects.filter(user = request.user, product = product)
 
-        if not wish_product.exists():
-            Wishlist.objects.create(user = user, product = product)
-            return JsonResponse({'message' : 'ADDED'}, status = 201)
-        
-        wish_product.delete()
-        return JsonResponse({'message' : 'DELETED'}, status = 201)
-        
+            if not wish_product.exists():
+                Wishlist.objects.create(user = request.user, product = product)
+                return JsonResponse({'message' : 'ADDED'}, status = 201)
+            
+            wish_product.delete()
+            return JsonResponse({'message' : 'DELETED'}, status = 200)
+        except KeyError:
+            return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
