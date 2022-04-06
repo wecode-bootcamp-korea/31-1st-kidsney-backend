@@ -7,7 +7,28 @@ from products.models import Product, ProductSize, Size
 from .models import Cart
 from utilities.decorators import check_token
  
-class PostCartView(View):
+class CartView(View):
+    @check_token
+    def get(self, request):
+        user  = request.user
+        carts = Cart.objects.filter(user = user)
+
+        carts = [{
+            'id': cart.id,
+            'product': {
+                'id'      : cart.product_size.product_id,
+                'name'    : cart.product_size.product.name,
+                'images'  : [image.image_url for image in cart.product_size.product.images.all()],
+                'size'    : cart.product_size.size.size_tag,
+                'quantity': cart.quantity,
+                'stock'   : cart.product_size.stock,
+                'price'   : cart.product_size.product.price  
+            },
+            'total_price' : cart.quantity * cart.product_size.product.price
+        } for cart in carts]
+        
+        return JsonResponse({'carts' : carts}, status=200)
+    
     @check_token
     def post(self, request, product_id):
         try:
@@ -37,38 +58,14 @@ class PostCartView(View):
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except ProductSize.DoesNotExist:
             return JsonResponse({'message' : 'PRODUCT_NOT_EXIST'}, status = 404)
-
-class GetCartView(View):
-    @check_token
-    def get(self, request):
-        user  = request.user
-        carts = Cart.objects.filter(user = user)
-
-        carts = [{
-            'id': cart.id,
-            'product': {
-                'id'      : cart.product_size.product_id,
-                'name'    : cart.product_size.product.name,
-                'images'  : [image.image_url for image in cart.product_size.product.images.all()],
-                'size'    : cart.product_size.size.size_tag,
-                'quantity': cart.quantity,
-                'stock'   : cart.product_size.stock,
-                'price'   : cart.product_size.product.price  
-            },
-            'total_price' : cart.quantity * cart.product_size.product.price
-        } for cart in carts]
         
-        return JsonResponse({'carts' : carts}, status=200)
-
-class UpdateCartView(View):
+class UpdateCartView(View):    
     @check_token
     def delete(self, request, cart_id):
         try:
             Cart.objects.get(user = request.user, id = cart_id).delete()
             return HttpResponse(status = 204)
 
-        except KeyError:
-            return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except Cart.DoesNotExist:
             return JsonResponse({'message' : 'CART_NOT_EXIST'}, status=404)
     
@@ -95,3 +92,4 @@ class UpdateCartView(View):
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
         except Cart.DoesNotExist:
             return JsonResponse({'message' : 'CART_NOT_EXIST'}, status=404)
+    

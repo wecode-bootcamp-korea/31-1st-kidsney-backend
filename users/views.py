@@ -1,6 +1,7 @@
+from http.client import HTTPResponse
 import json, bcrypt, jwt, datetime
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views import View
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
@@ -94,9 +95,9 @@ class PostWishView(View):
 
             if not wish_product.exists():
                 Wishlist.objects.create(user = request.user, product = product)
-                return JsonResponse({'message' : 'ADDED'}, status = 201)
+                return HttpResponse(status=201)
             
             wish_product.delete()
-            return JsonResponse({'message' : 'DELETED'}, status = 200)
+            return HttpResponse(status=204)
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)
