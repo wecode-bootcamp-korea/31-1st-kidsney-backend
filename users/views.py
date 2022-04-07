@@ -1,13 +1,16 @@
+from http.client import HTTPResponse
 import json, bcrypt, jwt, datetime
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views import View
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
 from utilities.validators import validate_email, validate_password, validate_phone_number
-from .models import User
+from utilities.decorators import check_token
+from .models import User, Wishlist
+from products.models import Product
 
 class SignUpView(View):
     def post(self, request):
@@ -64,4 +67,37 @@ class SignInView(View):
             return JsonResponse({'message': e.message}, status = 400)
         except User.DoesNotExist:
             return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
+
+class WishListView(View):
+    @check_token
+    def get(self, request):
+        user     = request.user
+        wishlist = Wishlist.objects.filter(user = user)
+
+        wishlist = [{
+            'id': wish_product.id,
+            'product': {
+                'id'      : wish_product.product.id,
+                'name'    : wish_product.product.name,
+                'images'  : [image.image_url for image in wish_product.product.images.all()],
+                'price'   : wish_product.product.price
+            }
+        } for wish_product in wishlist]
+
+        return JsonResponse({'wish_list' : wishlist}, status=200)
         
+class PostWishView(View):
+    @check_token
+    def post(self, request, product_id):
+        try:
+            product      = Product.objects.get(id = product_id)
+            wish_product = Wishlist.objects.filter(user = request.user, product = product)
+
+            if not wish_product.exists():
+                Wishlist.objects.create(user = request.user, product = product)
+                return HttpResponse(status=201)
+            
+            wish_product.delete()
+            return HttpResponse(status=204)
+        except KeyError:
+            return JsonResponse({'message' : 'KEY_ERROR'}, status = 400)

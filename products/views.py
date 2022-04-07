@@ -4,8 +4,8 @@ from django.http import JsonResponse
 from django.views import View
 from django.db.models import Q
 
-from products.models import *
 from utilities.decorators import check_token
+from products.models import *
 
 class MainProductView(View):
     def get(self, request):
@@ -47,7 +47,7 @@ class MainProductView(View):
         } for product in products] 
 
         return JsonResponse({'result' : product_list, 'count' : total_count}, status=200)
-    
+
 class ProductDetailView(View):
     def get(self, request, product_id):
         try:
